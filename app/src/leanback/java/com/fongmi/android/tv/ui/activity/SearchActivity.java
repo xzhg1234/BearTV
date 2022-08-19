@@ -1,22 +1,31 @@
 package com.fongmi.android.tv.ui.activity;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.text.Editable;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.view.View;
+import android.view.animation.Animation;
 import android.view.inputmethod.EditorInfo;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.leanback.widget.ArrayObjectAdapter;
 import androidx.leanback.widget.ItemBridgeAdapter;
 import androidx.leanback.widget.ListRow;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.CustomListener;
+import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.bean.Hot;
 import com.fongmi.android.tv.bean.Result;
@@ -34,7 +43,7 @@ import com.fongmi.android.tv.ui.presenter.TitlePresenter;
 import com.fongmi.android.tv.ui.presenter.VodPresenter;
 import com.fongmi.android.tv.ui.presenter.WordPresenter;
 import com.fongmi.android.tv.utils.ResUtil;
-import com.google.common.collect.Lists;
+import com.fongmi.android.tv.utils.Utils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,18 +54,26 @@ import java.util.concurrent.Executors;
 import okhttp3.Call;
 import okhttp3.Response;
 
-public class SearchActivity extends BaseActivity implements VodPresenter.OnClickListener, WordPresenter.OnClickListener, TextWatcher {
+public class SearchActivity extends BaseActivity implements VodPresenter.OnClickListener, WordPresenter.OnClickListener {
+
+    private final ActivityResultLauncher<String> launcherString = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> onVoice());
 
     private ActivitySearchBinding mBinding;
     private SiteViewModel mSiteViewModel;
     private ArrayObjectAdapter mWordAdapter;
     private ArrayObjectAdapter mAdapter;
+    private SpeechRecognizer mRecognizer;
     private ExecutorService mService;
     private List<Site> mSites;
     private Handler mHandler;
+    private Animation mBlink;
 
     private String getKeyword() {
         return getIntent().getStringExtra("keyword");
+    }
+
+    private boolean hasVoice() {
+        return SpeechRecognizer.isRecognitionAvailable(this);
     }
 
     public static void start(Activity activity) {
@@ -84,9 +101,12 @@ public class SearchActivity extends BaseActivity implements VodPresenter.OnClick
 
     @Override
     protected void initView() {
+        mBlink = ResUtil.getAnim(R.anim.voice);
         mHandler = new Handler(Looper.getMainLooper());
-        CustomKeyboard.init(mBinding);
+        mRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+        mBinding.voice.setVisibility(hasVoice() ? View.VISIBLE : View.GONE);
         mBinding.keyword.requestFocus();
+        CustomKeyboard.init(mBinding);
         setRecyclerView();
         setViewModel();
         checkKeyword();
@@ -96,13 +116,29 @@ public class SearchActivity extends BaseActivity implements VodPresenter.OnClick
 
     @Override
     protected void initEvent() {
-        mBinding.keyword.addTextChangedListener(this);
+        mBinding.voice.setOnClickListener(view -> onVoice());
         mBinding.search.setOnClickListener(view -> onSearch());
         mBinding.clear.setOnClickListener(view -> mBinding.keyword.setText(""));
         mBinding.remote.setOnClickListener(view -> PushActivity.start(this));
         mBinding.keyword.setOnEditorActionListener((textView, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) mBinding.search.performClick();
             return true;
+        });
+        mBinding.keyword.addTextChangedListener(new CustomListener() {
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (s.toString().isEmpty()) getHot();
+                else getSuggest(s.toString());
+            }
+        });
+        mRecognizer.setRecognitionListener(new CustomListener() {
+            @Override
+            public void onResults(String result) {
+                mBinding.search.requestFocus();
+                mBinding.voice.clearAnimation();
+                mBinding.keyword.setText(result);
+                mBinding.keyword.setSelection(mBinding.keyword.length());
+            }
         });
     }
 
@@ -141,15 +177,22 @@ public class SearchActivity extends BaseActivity implements VodPresenter.OnClick
     }
 
     private void addVideo(Result result) {
-        List<ListRow> rows = new ArrayList<>();
-        for (List<Vod> items : Lists.partition(result.getList(), 5)) {
-            ArrayObjectAdapter adapter = new ArrayObjectAdapter(new VodPresenter(this, 5));
-            adapter.addAll(0, items);
-            rows.add(new ListRow(adapter));
-        }
+        ArrayObjectAdapter adapter = new ArrayObjectAdapter(new VodPresenter(this));
+        adapter.setItems(result.getList(), null);
         mAdapter.add(result.getList().get(0).getSite().getName());
-        mAdapter.addAll(mAdapter.size(), rows);
+        mAdapter.add(new ListRow(adapter));
         mBinding.progressLayout.showContent();
+    }
+
+    private void onVoice() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            launcherString.launch(Manifest.permission.RECORD_AUDIO);
+        } else {
+            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            mBinding.voice.startAnimation(mBlink);
+            mRecognizer.startListening(intent);
+        }
     }
 
     private void onSearch() {
@@ -158,7 +201,8 @@ public class SearchActivity extends BaseActivity implements VodPresenter.OnClick
         if (TextUtils.isEmpty(keyword)) return;
         mService = Executors.newFixedThreadPool(5);
         for (Site site : mSites) mService.execute(() -> mSiteViewModel.searchContent(site.getKey(), keyword));
-        showProgress();
+        Utils.hideKeyboard(mBinding.keyword);
+        showResult();
     }
 
     private void stopSearch() {
@@ -167,18 +211,19 @@ public class SearchActivity extends BaseActivity implements VodPresenter.OnClick
         mService = null;
     }
 
-    private void showProgress() {
+    private void showResult() {
         mBinding.layout.setVisibility(View.GONE);
         mBinding.progressLayout.setVisibility(View.VISIBLE);
         mBinding.progressLayout.showProgress();
     }
 
-    private void hideProgress() {
+    private void hideResult() {
+        mBinding.clear.requestFocus();
         mBinding.layout.setVisibility(View.VISIBLE);
         mBinding.progressLayout.setVisibility(View.INVISIBLE);
     }
 
-    private boolean isProgressVisible() {
+    private boolean isResultVisible() {
         return mBinding.progressLayout.getVisibility() == View.VISIBLE;
     }
 
@@ -214,24 +259,10 @@ public class SearchActivity extends BaseActivity implements VodPresenter.OnClick
     }
 
     @Override
-    public void afterTextChanged(Editable s) {
-        if (s.toString().isEmpty()) getHot();
-        else getSuggest(s.toString());
-    }
-
-    @Override
-    public void onTextChanged(CharSequence s, int start, int before, int count) {
-    }
-
-    @Override
-    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-    }
-
-    @Override
     public void onBackPressed() {
-        if (isProgressVisible()) {
+        if (isResultVisible()) {
             mAdapter.clear();
-            hideProgress();
+            hideResult();
             stopSearch();
         } else {
             super.onBackPressed();
@@ -241,6 +272,7 @@ public class SearchActivity extends BaseActivity implements VodPresenter.OnClick
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mRecognizer.destroy();
         stopSearch();
     }
 }
