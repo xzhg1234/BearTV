@@ -15,7 +15,7 @@ import com.google.gson.annotations.SerializedName;
 import java.util.Collections;
 import java.util.List;
 
-@Entity(ignoredColumns = {"type", "api", "playerUrl", "ext", "categories"})
+@Entity(ignoredColumns = {"type", "api", "playUrl", "ext", "categories"})
 public class Site {
 
     @NonNull
@@ -28,8 +28,8 @@ public class Site {
     private int type;
     @SerializedName("api")
     private String api;
-    @SerializedName("playerUrl")
-    private String playerUrl;
+    @SerializedName("playUrl")
+    private String playUrl;
     @SerializedName("searchable")
     private Integer searchable;
     @SerializedName("filterable")
@@ -48,6 +48,13 @@ public class Site {
     public static Site get(String key) {
         Site site = new Site();
         site.setKey(key);
+        return site;
+    }
+
+    public static Site get(String key, String name) {
+        Site site = new Site();
+        site.setKey(key);
+        site.setName(name);
         return site;
     }
 
@@ -83,12 +90,8 @@ public class Site {
         this.api = api;
     }
 
-    public String getPlayerUrl() {
-        return TextUtils.isEmpty(playerUrl) ? "" : playerUrl;
-    }
-
-    public void setPlayerUrl(String playerUrl) {
-        this.playerUrl = playerUrl;
+    public String getPlayUrl() {
+        return playUrl;
     }
 
     public Integer getSearchable() {
@@ -117,10 +120,6 @@ public class Site {
 
     public List<String> getCategories() {
         return categories == null ? Collections.emptyList() : categories;
-    }
-
-    public void setCategories(List<String> categories) {
-        this.categories = categories;
     }
 
     public boolean isActivated() {

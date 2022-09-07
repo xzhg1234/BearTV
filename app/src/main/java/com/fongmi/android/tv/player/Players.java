@@ -9,6 +9,7 @@ import com.fongmi.android.tv.event.PlayerEvent;
 import com.fongmi.android.tv.ui.custom.CustomWebView;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.github.catvod.crawler.SpiderDebug;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
@@ -26,6 +27,7 @@ public class Players implements Player.Listener, ParseTask.Callback {
     private ExoPlayer exoPlayer;
     private ParseTask parseTask;
     private String key;
+    private int retry;
 
     private static class Loader {
         static volatile Players INSTANCE = new Players();
@@ -38,8 +40,8 @@ public class Players implements Player.Listener, ParseTask.Callback {
     public void init() {
         builder = new StringBuilder();
         webView = new CustomWebView(App.get());
-        exoPlayer = new ExoPlayer.Builder(App.get()).build();
         formatter = new Formatter(builder, Locale.getDefault());
+        exoPlayer = ExoUtil.create();
         exoPlayer.addListener(this);
     }
 
@@ -59,16 +61,32 @@ public class Players implements Player.Listener, ParseTask.Callback {
         this.key = key;
     }
 
+    public int getRetry() {
+        return retry;
+    }
+
+    public void setRetry(int retry) {
+        this.retry = retry;
+    }
+
+    public int addRetry() {
+        ++retry;
+        return retry;
+    }
+
     public String getSpeed() {
         return String.format(Locale.getDefault(), "%.2f", exoPlayer.getPlaybackParameters().speed);
     }
 
-    public String addSpeed() {
+    public void addSpeed() {
         float speed = exoPlayer.getPlaybackParameters().speed;
         float addon = speed >= 2 ? 1f : 0.25f;
         speed = speed >= 5 ? 0.5f : speed + addon;
         exoPlayer.setPlaybackSpeed(speed);
-        return getSpeed();
+    }
+
+    public void resetSpeed() {
+        exoPlayer.setPlaybackSpeed(1f);
     }
 
     public String getTime(long time) {
@@ -110,22 +128,27 @@ public class Players implements Player.Listener, ParseTask.Callback {
         return getCurrentPosition() >= getDuration();
     }
 
-    public void setMediaSource(Result result, boolean useParse) {
+    public void start(Result result, boolean useParse) {
         if (result.getUrl().isEmpty()) {
             PlayerEvent.error(R.string.error_play_load);
         } else if (result.getParse(1) == 1 || result.getJx() == 1) {
             if (parseTask != null) parseTask.cancel();
             parseTask = ParseTask.create(this).run(result, useParse);
         } else {
-            setMediaSource(result.getHeaders(), result.getPlayUrl() + result.getUrl());
+            setMediaSource(result);
         }
     }
 
-    public void setMediaSource(Map<String, String> headers, String url) {
+    private void setMediaSource(Result result) {
+        exoPlayer.setMediaSource(ExoUtil.getSource(result));
+        PlayerEvent.state(0);
+        exoPlayer.prepare();
+    }
+
+    private void setMediaSource(Map<String, String> headers, String url) {
         exoPlayer.setMediaSource(ExoUtil.getSource(headers, url));
         PlayerEvent.state(0);
         exoPlayer.prepare();
-        exoPlayer.play();
     }
 
     public void pause() {
@@ -135,6 +158,7 @@ public class Players implements Player.Listener, ParseTask.Callback {
     }
 
     public void stop() {
+        this.retry = 0;
         if (exoPlayer != null) {
             exoPlayer.stop();
             exoPlayer.clearMediaItems();
@@ -167,6 +191,7 @@ public class Players implements Player.Listener, ParseTask.Callback {
     public void onParseSuccess(Map<String, String> headers, String url, String from) {
         if (from.length() > 0) Notify.show(ResUtil.getString(R.string.parse_from, from));
         setMediaSource(headers, url);
+        SpiderDebug.log(url);
     }
 
     @Override

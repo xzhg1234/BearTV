@@ -67,6 +67,14 @@ public class Prefers {
         Prefers.put("parse", parse);
     }
 
+    public static String getKeyword() {
+        return Prefers.getString("keyword");
+    }
+
+    public static void putKeyword(String keyword) {
+        Prefers.put("keyword", keyword);
+    }
+
     public static int getScale() {
         return Prefers.getInt("scale");
     }
@@ -81,6 +89,14 @@ public class Prefers {
 
     public static void putThumbnail(int thumbnail) {
         Prefers.put("thumbnail", thumbnail);
+    }
+
+    public static int getRender() {
+        return Prefers.getInt("render", 0);
+    }
+
+    public static void putRender(int render) {
+        Prefers.put("render", render);
     }
 
     public static int getInterval() {

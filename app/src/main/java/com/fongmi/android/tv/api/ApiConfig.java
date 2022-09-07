@@ -24,6 +24,7 @@ import org.json.JSONObject;
 
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,6 +53,10 @@ public class ApiConfig {
 
     public static String getHomeName() {
         return get().getHome().getName();
+    }
+
+    public static int getHomeIndex() {
+        return get().getSites().indexOf(get().getHome());
     }
 
     public static String getSiteName(String key) {
@@ -140,7 +145,7 @@ public class ApiConfig {
 
     private void parseJar(String spider) throws Exception {
         String[] texts = spider.split(";md5;");
-        String md5 = texts.length > 1 ? texts[1].trim() : "";
+        String md5 = spider.startsWith("http") && texts.length > 1 ? texts[1].trim() : "";
         String url = texts[0];
         if (md5.length() > 0 && FileUtil.equals(md5)) {
             loader.load(FileUtil.getJar());
@@ -191,19 +196,19 @@ public class ApiConfig {
     }
 
     public List<Site> getSites() {
-        return sites;
+        return sites == null ? Collections.emptyList() : sites;
     }
 
     public List<Parse> getParses() {
-        return parses;
+        return parses == null ? Collections.emptyList() : parses;
     }
 
     public String getAds() {
-        return ads.toString();
+        return ads == null ? "" : ads.toString();
     }
 
     public List<String> getFlags() {
-        return flags;
+        return flags == null ? Collections.emptyList() : flags;
     }
 
     public Site getHome() {
@@ -240,16 +245,5 @@ public class ApiConfig {
         this.parses.clear();
         this.home = null;
         return this;
-    }
-
-    public void release() {
-        this.ads = null;
-        this.home = null;
-        this.sites = null;
-        this.lives = null;
-        this.flags = null;
-        this.parses = null;
-        this.loader = null;
-        this.handler = null;
     }
 }

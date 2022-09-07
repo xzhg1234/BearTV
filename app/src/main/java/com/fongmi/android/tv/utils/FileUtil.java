@@ -10,16 +10,14 @@ import android.util.Log;
 import androidx.core.content.FileProvider;
 
 import com.fongmi.android.tv.App;
-import com.google.common.hash.Hashing;
-import com.google.common.io.Files;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URLConnection;
+import java.security.MessageDigest;
 
 public class FileUtil {
 
@@ -63,6 +61,7 @@ public class FileUtil {
         fos.write(data);
         fos.flush();
         fos.close();
+        chmod(file);
         return file;
     }
 
@@ -79,8 +78,25 @@ public class FileUtil {
         }
     }
 
-    public static boolean equals(String md5) throws IOException {
-        return Files.hash(FileUtil.getJar(), Hashing.md5()).toString().equalsIgnoreCase(md5);
+    private static String getMd5(File file) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("MD5");
+            FileInputStream fis = new FileInputStream(file);
+            byte[] byteArray = new byte[1024];
+            int count;
+            while ((count = fis.read(byteArray)) != -1) digest.update(byteArray, 0, count);
+            fis.close();
+            byte[] bytes = digest.digest();
+            StringBuilder sb = new StringBuilder();
+            for (byte b : bytes) sb.append(Integer.toString((b & 0xff) + 0x100, 16).substring(1));
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    public static boolean equals(String md5) {
+        return getMd5(FileUtil.getJar()).equalsIgnoreCase(md5);
     }
 
     public static void clearDir(File dir) {
@@ -95,5 +111,14 @@ public class FileUtil {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.setDataAndType(getShareUri(file), FileUtil.getMimeType(file.getName()));
         App.get().startActivity(intent);
+    }
+
+    private static void chmod(File file) {
+        try {
+            Process process = Runtime.getRuntime().exec("chmod 777 " + file);
+            process.waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

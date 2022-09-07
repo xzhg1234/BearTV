@@ -28,7 +28,7 @@ public class SiteViewModel extends ViewModel {
 
     public MutableLiveData<Result> result;
     public MutableLiveData<Result> player;
-    public ExecutorService service;
+    public ExecutorService executor;
 
     public SiteViewModel() {
         this.result = new MutableLiveData<>();
@@ -57,7 +57,9 @@ public class SiteViewModel extends ViewModel {
                 result.setList(Result.fromJson(homeVideoContent).getList());
                 return result;
             } else if (site.getType() == 4) {
-                String body = OKHttp.newCall(site.getApi()).execute().body().string();
+                HashMap<String, String> params = new HashMap<>();
+                params.put("filter", "true");
+                String body = OKHttp.newCall(site.getApi(), params).execute().body().string();
                 SpiderDebug.log(body);
                 return Result.fromJson(body);
             } else {
@@ -143,16 +145,15 @@ public class SiteViewModel extends ViewModel {
                 Result result = new Result();
                 result.setUrl(id);
                 result.setFlag(flag);
-                result.setPlayUrl(site.getPlayerUrl());
+                result.setPlayUrl(site.getPlayUrl());
                 result.setParse(Utils.isVideoFormat(id) ? 0 : 1);
                 return result;
             }
         });
     }
 
-    public void searchContent(String key, String keyword) {
+    public void searchContent(Site site, String keyword) {
         try {
-            Site site = ApiConfig.get().getSite(key);
             if (site.getType() == 3) {
                 Spider spider = ApiConfig.get().getCSP(site);
                 String searchContent = spider.searchContent(keyword, false);
@@ -167,7 +168,7 @@ public class SiteViewModel extends ViewModel {
                 if (site.getType() == 0) post(site, Result.fromXml(body));
                 else post(site, Result.fromJson(body));
             }
-        } catch (Exception | NoClassDefFoundError e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
@@ -179,21 +180,21 @@ public class SiteViewModel extends ViewModel {
     }
 
     private void execute(MutableLiveData<Result> result, Callable<Result> callable) {
-        if (service != null) service.shutdownNow();
-        service = Executors.newFixedThreadPool(2);
-        service.execute(() -> {
+        if (executor != null) executor.shutdownNow();
+        executor = Executors.newFixedThreadPool(2);
+        executor.execute(() -> {
             try {
-                if (!Thread.interrupted()) result.postValue(service.submit(callable).get(15, TimeUnit.SECONDS));
-            } catch (Exception e) {
+                if (!Thread.interrupted()) result.postValue(executor.submit(callable).get(15, TimeUnit.SECONDS));
+            } catch (Throwable e) {
                 e.printStackTrace();
                 if (e instanceof InterruptedException) return;
-                if (!Thread.interrupted()) result.postValue(new Result());
+                if (!Thread.interrupted()) result.postValue(Result.empty());
             }
         });
     }
 
     @Override
     protected void onCleared() {
-        if (service != null) service.shutdownNow();
+        if (executor != null) executor.shutdownNow();
     }
 }

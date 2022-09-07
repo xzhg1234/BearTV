@@ -2,22 +2,23 @@ package com.fongmi.android.tv.ui.fragment;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
 import androidx.leanback.widget.ArrayObjectAdapter;
 import androidx.leanback.widget.ItemBridgeAdapter;
 import androidx.leanback.widget.ListRow;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Filter;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.FragmentVodBinding;
 import com.fongmi.android.tv.model.SiteViewModel;
+import com.fongmi.android.tv.ui.activity.BaseFragment;
+import com.fongmi.android.tv.ui.activity.CollectActivity;
 import com.fongmi.android.tv.ui.activity.DetailActivity;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
 import com.fongmi.android.tv.ui.custom.CustomScroller;
@@ -33,13 +34,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-public class VodFragment extends Fragment implements CustomScroller.Callback, VodPresenter.OnClickListener {
+public class VodFragment extends BaseFragment implements CustomScroller.Callback, VodPresenter.OnClickListener {
 
     private HashMap<String, String> mExtend;
     private FragmentVodBinding mBinding;
-    private SiteViewModel mSiteViewModel;
     private ArrayObjectAdapter mAdapter;
     private ArrayObjectAdapter mLast;
+    private SiteViewModel mViewModel;
     private CustomScroller mScroller;
     private List<Filter> mFilters;
 
@@ -60,17 +61,15 @@ public class VodFragment extends Fragment implements CustomScroller.Callback, Vo
         return fragment;
     }
 
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        mBinding = FragmentVodBinding.inflate(inflater, container, false);
-        mFilters = Filter.arrayFrom(getFilter());
-        mExtend = new HashMap<>();
-        return mBinding.getRoot();
+    protected ViewBinding getBinding(@NonNull LayoutInflater inflater, @Nullable ViewGroup container) {
+        return mBinding = FragmentVodBinding.inflate(inflater, container, false);
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+    protected void initView() {
+        mFilters = Filter.arrayFrom(getFilter());
+        mExtend = new HashMap<>();
         setRecyclerView();
         setViewModel();
         getVideo();
@@ -81,14 +80,14 @@ public class VodFragment extends Fragment implements CustomScroller.Callback, Vo
         selector.addPresenter(ListRow.class, new CustomRowPresenter(16), VodPresenter.class);
         selector.addPresenter(ListRow.class, new CustomRowPresenter(8), FilterPresenter.class);
         mBinding.recycler.addOnScrollListener(mScroller = new CustomScroller(this));
-        mBinding.recycler.setTabView(getActivity().findViewById(R.id.recycler));
-        mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(16));
         mBinding.recycler.setAdapter(new ItemBridgeAdapter(mAdapter = new ArrayObjectAdapter(selector)));
+        mBinding.recycler.setHeader(getActivity().findViewById(R.id.recycler));
+        mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(16));
     }
 
     private void setViewModel() {
-        mSiteViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
-        mSiteViewModel.result.observe(getViewLifecycleOwner(), result -> {
+        mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
+        mViewModel.result.observe(getViewLifecycleOwner(), result -> {
             mScroller.endLoading(result.getList().isEmpty());
             addVideo(result.getList());
             checkPage();
@@ -117,13 +116,14 @@ public class VodFragment extends Fragment implements CustomScroller.Callback, Vo
     private void getVideo(String page) {
         boolean clear = page.equals("1") && mAdapter.size() > mFilters.size();
         if (clear) mAdapter.removeItems(mFilters.size(), mAdapter.size() - mFilters.size());
-        mSiteViewModel.categoryContent(getTypeId(), page, true, mExtend);
+        mViewModel.categoryContent(getTypeId(), page, true, mExtend);
     }
 
     private boolean checkLastSize(List<Vod> items) {
         if (mLast == null || items.size() == 0) return false;
         int size = 5 - mLast.size();
         if (size == 0) return false;
+        size = Math.min(size, items.size());
         mLast.addAll(mLast.size(), new ArrayList<>(items.subList(0, size)));
         addVideo(new ArrayList<>(items.subList(size, items.size())));
         return true;
@@ -163,7 +163,14 @@ public class VodFragment extends Fragment implements CustomScroller.Callback, Vo
 
     @Override
     public void onItemClick(Vod item) {
-        DetailActivity.start(getActivity(), item.getVodId());
+        if (item.getVodId().startsWith("msearch:")) onLongClick(item);
+        else DetailActivity.start(getActivity(), item.getVodId());
+    }
+
+    @Override
+    public boolean onLongClick(Vod item) {
+        CollectActivity.start(getActivity(), item.getVodName());
+        return true;
     }
 
     @Override
