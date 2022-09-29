@@ -45,7 +45,7 @@ public class ConfigDialog implements DialogInterface.OnDismissListener {
 
     private void initDialog() {
         WindowManager.LayoutParams params = dialog.getWindow().getAttributes();
-        params.width = (int) (ResUtil.getScreenWidthPx() * 0.7f);
+        params.width = (int) (ResUtil.getScreenWidthPx() * 0.6f);
         dialog.getWindow().setAttributes(params);
         dialog.getWindow().setDimAmount(0);
         dialog.setOnDismissListener(this);
@@ -57,7 +57,7 @@ public class ConfigDialog implements DialogInterface.OnDismissListener {
         binding.text.setText(Prefers.getUrl());
         binding.text.setSelection(binding.text.getText().length());
         binding.code.setImageBitmap(QRCode.getBitmap(address, 200, 0));
-        binding.info.setText(ResUtil.getString(R.string.dialog_config_info, address));
+        binding.info.setText(ResUtil.getString(R.string.push_info, address).replace("，", "\n"));
     }
 
     private void initEvent() {

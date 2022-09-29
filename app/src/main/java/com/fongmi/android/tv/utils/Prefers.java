@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import androidx.preference.PreferenceManager;
 
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.R;
 
 public class Prefers {
 
@@ -28,6 +29,14 @@ public class Prefers {
         return getInt(key, 0);
     }
 
+    public static boolean getBoolean(String key, boolean defaultValue) {
+        return getPrefers().getBoolean(key, defaultValue);
+    }
+
+    public static boolean getBoolean(String key) {
+        return getPrefers().getBoolean(key, false);
+    }
+
     public static void put(String key, Object obj) {
         if (obj == null) return;
         if (obj instanceof String) {
@@ -44,66 +53,90 @@ public class Prefers {
     }
 
     public static String getUrl() {
-        return Prefers.getString("url");
+        return getString("url", ResUtil.getString(R.string.url));
     }
 
     public static void putUrl(String url) {
-        Prefers.put("url", url);
+        put("url", url);
     }
 
     public static String getHome() {
-        return Prefers.getString("home");
+        return getString("home");
     }
 
     public static void putHome(String home) {
-        Prefers.put("home", home);
-    }
-
-    public static String getParse() {
-        return Prefers.getString("parse");
-    }
-
-    public static void putParse(String parse) {
-        Prefers.put("parse", parse);
-    }
-
-    public static String getKeyword() {
-        return Prefers.getString("keyword");
-    }
-
-    public static void putKeyword(String keyword) {
-        Prefers.put("keyword", keyword);
-    }
-
-    public static int getScale() {
-        return Prefers.getInt("scale");
-    }
-
-    public static void putScale(int scale) {
-        Prefers.put("scale", scale);
-    }
-
-    public static int getThumbnail() {
-        return Prefers.getInt("thumbnail", 1);
-    }
-
-    public static void putThumbnail(int thumbnail) {
-        Prefers.put("thumbnail", thumbnail);
+        put("home", home);
     }
 
     public static int getRender() {
-        return Prefers.getInt("render", 0);
+        return getInt("render", 0);
     }
 
     public static void putRender(int render) {
-        Prefers.put("render", render);
+        put("render", render);
+    }
+
+    public static int getQuality() {
+        return getInt("quality", 1);
+    }
+
+    public static void putQuality(int quality) {
+        put("quality", quality);
+    }
+
+    public static int getSize() {
+        return getInt("size", 2);
+    }
+
+    public static void putSize(int size) {
+        put("size", size);
+    }
+
+    public static String getParse() {
+        return getString("parse");
+    }
+
+    public static void putParse(String parse) {
+        put("parse", parse);
+    }
+
+    public static String getKeyword() {
+        return getString("keyword");
+    }
+
+    public static void putKeyword(String keyword) {
+        put("keyword", keyword);
+    }
+
+    public static int getScale() {
+        return getInt("scale");
+    }
+
+    public static void putScale(int scale) {
+        put("scale", scale);
     }
 
     public static int getInterval() {
-        return Prefers.getInt("interval", 15);
+        return getInt("interval", 15);
     }
 
     public static void putInterval(int interval) {
-        Prefers.put("interval", interval);
+        put("interval", interval);
+    }
+
+    public static boolean getUpdate() {
+        return getBoolean("update", true);
+    }
+
+    public static void putUpdate(boolean update) {
+        put("update", update);
+    }
+
+    public static float getThumbnail() {
+        return 0.3f * getQuality() + 0.4f;
+    }
+
+    public static int getColumn() {
+        return Math.abs(getSize() - 7);
     }
 }

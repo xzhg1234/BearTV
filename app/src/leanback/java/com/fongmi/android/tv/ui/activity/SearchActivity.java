@@ -93,17 +93,17 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
     }
 
     private void setRecyclerView() {
-        mBinding.word.setHasFixedSize(true);
-        mBinding.word.addItemDecoration(new SpaceItemDecoration(1, 16));
-        mBinding.word.setAdapter(mWordAdapter = new WordAdapter(this));
-        mBinding.history.setHasFixedSize(true);
-        mBinding.history.addItemDecoration(new SpaceItemDecoration(1, 16));
-        mBinding.history.setAdapter(mHistoryAdapter = new HistoryAdapter(this));
+        mBinding.wordRecycler.setHasFixedSize(true);
+        mBinding.wordRecycler.addItemDecoration(new SpaceItemDecoration(1, 16));
+        mBinding.wordRecycler.setAdapter(mWordAdapter = new WordAdapter(this));
+        mBinding.historyRecycler.setHasFixedSize(true);
+        mBinding.historyRecycler.addItemDecoration(new SpaceItemDecoration(1, 16));
+        mBinding.historyRecycler.setAdapter(mHistoryAdapter = new HistoryAdapter(this));
     }
 
     private void getHot() {
         mBinding.hint.setText(R.string.search_hot);
-        OKHttp.newCall("https://node.video.qq.com/x/api/hot_mobilesearch?channdlId=0").enqueue(new Callback() {
+        OKHttp.newCall("https://api.web.360kan.com/v1/rank?cat=1").enqueue(new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 List<String> items = Hot.get(response.body().string());

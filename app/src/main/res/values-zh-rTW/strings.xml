@@ -10,7 +10,11 @@
     <!-- Vod -->
     <string name="vod_last">上次看到<xliff:g name="name">%s</xliff:g></string>
 
+    <!-- Push -->
+    <string name="push_clip">推送剪貼簿內容</string>
+
     <!-- Detail -->
+    <string name="detail_title"><xliff:g name="name">%s</xliff:g>：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_site">站源：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_year">年份：<xliff:g name="name">%s</xliff:g></string>
     <string name="detail_area">地區：<xliff:g name="name">%s</xliff:g></string>
@@ -26,6 +30,7 @@
     <string name="play_ready">準備播放：<xliff:g name="name">%s</xliff:g></string>
     <string name="play_replay">重播</string>
     <string name="play_reset">重置</string>
+    <string name="play_tracks">軌道</string>
     <string name="play_oped">片頭片尾</string>
     <string name="play_reverse">倒序</string>
     <string name="play_forward">→</string>
@@ -40,8 +45,11 @@
     <!-- Setting -->
     <string name="setting_site">首頁</string>
     <string name="setting_url">配置</string>
-    <string name="setting_render">渲染</string>
-    <string name="setting_thumbnail">縮圖</string>
+    <string name="setting_render">渲染方式</string>
+    <string name="setting_scale">縮放比例</string>
+    <string name="setting_quality">圖片品質</string>
+    <string name="setting_size">圖片尺寸</string>
+    <string name="setting_version">版本</string>
 
     <!-- Dialog -->
     <string name="dialog_positive">確定</string>
@@ -59,6 +67,10 @@
     <string name="error_episode">暫無播放資料</string>
     <string name="error_empty">找不到資料</string>
 
+    <!-- Update -->
+    <string name="update_version">發現新版本 <xliff:g name="name">%s</xliff:g></string>
+    <string name="update_confirm">更新</string>
+
     <!-- Crash -->
     <string name="crash_info">發生意外錯誤\n抱歉給您帶來不便</string>
     <string name="crash_restart">重新啟動</string>
@@ -67,20 +79,27 @@
     <string name="crash_details_close">關閉</string>
 
     <!-- UNIT -->
+    <string name="all">全部</string>
     <string name="second"><xliff:g name="name">%s</xliff:g> 秒</string>
 
-    <string-array name="select_thumbnail">
-        <item>低品質</item>
-        <item>中品質</item>
-        <item>高品質</item>
+    <string-array name="select_quality">
+        <item>低</item>
+        <item>中</item>
+        <item>高</item>
+    </string-array>
+
+    <string-array name="select_size">
+        <item>小</item>
+        <item>中</item>
+        <item>大</item>
     </string-array>
 
     <string-array name="select_scale">
         <item>預設</item>
-        <item>寬度</item>
-        <item>高度</item>
+        <item>16:9</item>
+        <item>4:3</item>
         <item>填充</item>
-        <item>縮放</item>
+        <item>裁剪</item>
     </string-array>
 
 </resources>

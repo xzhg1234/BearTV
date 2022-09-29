@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.animation.Animation;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -43,25 +44,14 @@ public class CustomViewPager extends ViewPager {
     }
 
     @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        return super.dispatchKeyEvent(event) || executeKeyEvent(event);
-    }
-
     public boolean executeKeyEvent(@NonNull KeyEvent event) {
-        boolean handled = false;
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            switch (event.getKeyCode()) {
-                case KeyEvent.KEYCODE_DPAD_LEFT:
-                    handled = arrowScroll(FOCUS_LEFT);
-                    break;
-                case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    handled = arrowScroll(FOCUS_RIGHT);
-                    break;
-            }
-        }
-        return handled;
+        if (findFocus() instanceof TextView) return false;
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT) return arrowScroll(FOCUS_LEFT);
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT) return arrowScroll(FOCUS_RIGHT);
+        return false;
     }
 
+    @Override
     public boolean arrowScroll(int direction) {
         boolean handled = false;
         View currentFocused = findFocus();
@@ -143,7 +133,7 @@ public class CustomViewPager extends ViewPager {
         return outRect;
     }
 
-    boolean pageLeft() {
+    private boolean pageLeft() {
         if (getCurrentItem() > 0) {
             setCurrentItem(getCurrentItem() - 1, false);
             return true;
@@ -151,7 +141,7 @@ public class CustomViewPager extends ViewPager {
         return false;
     }
 
-    boolean pageRight() {
+    private boolean pageRight() {
         if (getAdapter() != null && getCurrentItem() < getAdapter().getCount() - 1) {
             setCurrentItem(getCurrentItem() + 1, false);
             return true;

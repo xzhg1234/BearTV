@@ -2,6 +2,8 @@ package com.fongmi.android.tv.ui.activity;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +27,7 @@ import com.fongmi.android.tv.databinding.ActivityVodBinding;
 import com.fongmi.android.tv.ui.fragment.VodFragment;
 import com.fongmi.android.tv.ui.presenter.TypePresenter;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,6 +38,7 @@ public class VodActivity extends BaseActivity {
     private ActivityVodBinding mBinding;
     private ArrayObjectAdapter mAdapter;
     private PageAdapter mPageAdapter;
+    private Handler mHandler;
     private Result mResult;
     private View mOldView;
 
@@ -57,6 +61,7 @@ public class VodActivity extends BaseActivity {
 
     @Override
     protected void initView() {
+        mHandler = new Handler(Looper.getMainLooper());
         mResult = Result.fromJson(getResult());
         setRecyclerView();
         setTypes();
@@ -74,11 +79,7 @@ public class VodActivity extends BaseActivity {
         mBinding.recycler.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
-                mBinding.pager.setCurrentItem(position);
-                if (mOldView != null) mOldView.setActivated(false);
-                if (child == null) return;
-                mOldView = child.itemView;
-                mOldView.setActivated(true);
+                onChildSelected(child);
             }
         });
     }
@@ -89,19 +90,16 @@ public class VodActivity extends BaseActivity {
         mBinding.recycler.setAdapter(new ItemBridgeAdapter(mAdapter = new ArrayObjectAdapter(new TypePresenter(this::updateFilter))));
     }
 
+    private List<Class> getTypes() {
+        List<Class> types = new ArrayList<>();
+        for (String cate : ApiConfig.get().getHome().getCategories()) for (Class type : mResult.getTypes()) if (cate.equals(type.getTypeName())) types.add(type);
+        return types;
+    }
+
     private void setTypes() {
-        List<Class> newTypes = new ArrayList<>();
-        for (String cate : ApiConfig.get().getHome().getCategories()) {
-            for (Class type : mResult.getTypes()) {
-                if (cate.equals(type.getTypeName())) newTypes.add(type);
-            }
-        }
-        if (newTypes.size() > 0) mResult.setTypes(newTypes);
-        if (ApiConfig.get().getHome().isFilterable()) {
-            for (Class item : mResult.getTypes()) {
-                if (mResult.getFilters().containsKey(item.getTypeId())) item.setFilter(false);
-            }
-        }
+        mResult.setTypes(getTypes());
+        Boolean filter = ApiConfig.get().getHome().isFilterable() ? false : null;
+        for (Class item : mResult.getTypes()) if (mResult.getFilters().containsKey(item.getTypeId())) item.setFilter(filter);
         mAdapter.setItems(mResult.getTypes(), null);
     }
 
@@ -109,11 +107,26 @@ public class VodActivity extends BaseActivity {
         mBinding.pager.setAdapter(mPageAdapter = new PageAdapter(getSupportFragmentManager()));
     }
 
-    private void updateFilter(Class item) {
-        if (item.getFilter() != null) {
-            getFragment().toggleFilter(item.toggleFilter().getFilter());
-            mAdapter.notifyArrayItemRangeChanged(0, mAdapter.size());
+    private void onChildSelected(@Nullable RecyclerView.ViewHolder child) {
+        mHandler.removeCallbacks(mRunnable);
+        mHandler.postDelayed(mRunnable, 200);
+        if (mOldView != null) mOldView.setActivated(false);
+        if (child == null) return;
+        mOldView = child.itemView;
+        mOldView.setActivated(true);
+    }
+
+    private final Runnable mRunnable = new Runnable() {
+        @Override
+        public void run() {
+            mBinding.pager.setCurrentItem(mBinding.recycler.getSelectedPosition());
         }
+    };
+
+    private void updateFilter(Class item) {
+        if (item.getFilter() == null) return;
+        getFragment().toggleFilter(item.toggleFilter());
+        mAdapter.notifyArrayItemRangeChanged(0, mAdapter.size());
     }
 
     @Override
@@ -127,6 +140,7 @@ public class VodActivity extends BaseActivity {
     public void onBackPressed() {
         Class item = mResult.getTypes().get(mBinding.pager.getCurrentItem());
         if (item.getFilter() != null && item.getFilter()) updateFilter(item);
+        else if (getFragment().canGoBack()) getFragment().goBack();
         else super.onBackPressed();
     }
 
@@ -143,7 +157,9 @@ public class VodActivity extends BaseActivity {
         @NonNull
         @Override
         public Fragment getItem(int position) {
-            return VodFragment.newInstance(mResult.getTypes().get(position).getTypeId(), mResult.getFilters().get(mResult.getTypes().get(position).getTypeId()));
+            Class type = mResult.getTypes().get(position);
+            String filter = new Gson().toJson(mResult.getFilters().get(type.getTypeId()));
+            return VodFragment.newInstance(type.getTypeId(), filter, type.getTypeFlag().equals("1"));
         }
 
         @Override

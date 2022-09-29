@@ -38,11 +38,13 @@ import com.fongmi.android.tv.net.OKHttp;
 import com.fongmi.android.tv.player.ExoUtil;
 import com.fongmi.android.tv.player.Players;
 import com.fongmi.android.tv.ui.custom.CustomKeyDown;
+import com.fongmi.android.tv.ui.custom.TrackSelectionDialog;
 import com.fongmi.android.tv.ui.presenter.EpisodePresenter;
 import com.fongmi.android.tv.ui.presenter.FlagPresenter;
 import com.fongmi.android.tv.ui.presenter.GroupPresenter;
 import com.fongmi.android.tv.ui.presenter.ParsePresenter;
 import com.fongmi.android.tv.ui.presenter.PartPresenter;
+import com.fongmi.android.tv.utils.Clock;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.Prefers;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -62,7 +64,7 @@ import java.util.List;
 import okhttp3.Call;
 import okhttp3.Response;
 
-public class DetailActivity extends BaseActivity implements CustomKeyDown.Listener, GroupPresenter.OnClickListener {
+public class DetailActivity extends BaseActivity implements CustomKeyDown.Listener, GroupPresenter.OnClickListener, Clock.Callback {
 
     private ActivityDetailBinding mBinding;
     private ViewControllerBottomBinding mControl;
@@ -79,6 +81,7 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
     private boolean mFullscreen;
     private Handler mHandler;
     private History mHistory;
+    private Players mPlayers;
     private int mCurrent;
 
     private String getKey() {
@@ -131,6 +134,7 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
         mHandler = new Handler(Looper.getMainLooper());
         mFrameParams = mBinding.video.getLayoutParams();
         mBinding.progressLayout.showProgress();
+        mPlayers = new Players().init();
         setRecyclerView();
         setVideoView();
         setViewModel();
@@ -147,6 +151,7 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
         mControl.scale.setOnClickListener(view -> onScale());
         mControl.reset.setOnClickListener(view -> onReset());
         mControl.speed.setOnClickListener(view -> onSpeed());
+        mControl.tracks.setOnClickListener(view -> onTracks());
         mControl.ending.setOnClickListener(view -> onEnding());
         mControl.opening.setOnClickListener(view -> onOpening());
         mControl.interval.setOnClickListener(view -> onInterval());
@@ -188,10 +193,10 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
 
     private void setVideoView() {
         getPlayerView().setVisibility(View.VISIBLE);
-        getPlayerView().setPlayer(Players.get().exo());
+        getPlayerView().setPlayer(mPlayers.exo());
         getPlayerView().setResizeMode(Prefers.getScale());
         getPlayerView().getSubtitleView().setStyle(ExoUtil.getCaptionStyle());
-        mControl.speed.setText(Players.get().getSpeed());
+        mControl.speed.setText(mPlayers.getSpeed());
         mControl.scale.setText(ResUtil.getStringArray(R.array.select_scale)[Prefers.getScale()]);
         mControl.interval.setText(ResUtil.getString(R.string.second, Prefers.getInterval()));
     }
@@ -201,7 +206,7 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
         mViewModel.player.observe(this, result -> {
             boolean useParse = (result.getPlayUrl().isEmpty() && ApiConfig.get().getFlags().contains(result.getFlag())) || result.getJx() == 1;
             mControl.parseLayout.setVisibility(useParse ? View.VISIBLE : View.GONE);
-            Players.get().start(result, useParse);
+            mPlayers.start(result, useParse);
             resetFocus(useParse);
         });
         mViewModel.result.observe(this, result -> {
@@ -212,8 +217,8 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
 
     private void resetFocus(boolean useParse) {
         mControl.exoProgress.setNextFocusUpId(useParse ? R.id.parse : R.id.next);
-        for (int i = 0; i < mControl.playLayout.getChildCount(); i++) {
-            mControl.playLayout.getChildAt(i).setNextFocusDownId(useParse ? R.id.parse : com.google.android.exoplayer2.ui.R.id.exo_progress);
+        for (int i = 0; i < mControl.actionLayout.getChildCount(); i++) {
+            mControl.actionLayout.getChildAt(i).setNextFocusDownId(useParse ? R.id.parse : com.google.android.exoplayer2.ui.R.id.exo_progress);
         }
     }
 
@@ -223,15 +228,15 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
 
     private void getPlayer(boolean replay) {
         Vod.Flag.Episode item = (Vod.Flag.Episode) mEpisodeAdapter.get(getEpisodePosition());
-        if (mFullscreen && Players.get().getRetry() == 0) Notify.show(ResUtil.getString(R.string.play_ready, item.getName()));
+        if (mFullscreen && mPlayers.getRetry() == 0) Notify.show(ResUtil.getString(R.string.play_ready, item.getName()));
+        mBinding.widget.title.setText(getString(R.string.detail_title, mBinding.name.getText(), item.getName()));
         mViewModel.playerContent(getKey(), getVodFlag().getFlag(), item.getUrl());
-        mBinding.progress.getRoot().setVisibility(View.VISIBLE);
-        mBinding.error.getRoot().setVisibility(View.GONE);
+        mBinding.widget.progress.getRoot().setVisibility(View.VISIBLE);
+        mBinding.widget.error.setVisibility(View.GONE);
         updateHistory(item, replay);
     }
 
     private void setDetail(Vod item) {
-        Players.get().setKey(getHistoryKey());
         mBinding.progressLayout.showContent();
         mBinding.video.setTag(item.getVodPic());
         mBinding.name.setText(item.getVodName());
@@ -279,14 +284,15 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
     private void reverseEpisode() {
         for (int i = 0; i < mFlagAdapter.size(); i++) Collections.reverse(((Vod.Flag) mFlagAdapter.get(i)).getEpisodes());
         mEpisodeAdapter.setItems(getVodFlag().getEpisodes(), null);
+        setGroup(mEpisodeAdapter.size());
     }
 
     private void setParseActivated(Parse item) {
         ApiConfig.get().setParse(item);
-        mBinding.error.getRoot().setVisibility(View.GONE);
-        mBinding.progress.getRoot().setVisibility(View.VISIBLE);
+        mBinding.widget.error.setVisibility(View.GONE);
+        mBinding.widget.progress.getRoot().setVisibility(View.VISIBLE);
         Result result = mViewModel.getPlayer().getValue();
-        if (result != null) Players.get().start(result, true);
+        if (result != null) mPlayers.start(result, true);
         mParseAdapter.notifyArrayItemRangeChanged(0, mParseAdapter.size());
     }
 
@@ -294,11 +300,11 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
         List<String> items = new ArrayList<>();
         items.add(getString(R.string.play_reverse));
         items.add(getString(mHistory.getRevPlayText()));
-        int itemSize = (int) Math.ceil(size / 20.0f);
-        if (itemSize > 1) for (int i = 0; i < itemSize; i++) items.add(String.valueOf(i * 20 + 1));
         mEpisodePresenter.setNextFocusDown(size > 1 ? R.id.group : R.id.part);
         mPartPresenter.setNextFocusUp(size > 1 ? R.id.group : R.id.episode);
         mBinding.group.setVisibility(size > 1 ? View.VISIBLE : View.GONE);
+        if (mHistory.isRevSort()) for (int i = size + 1; i > 0; i -= 20) items.add((i - 1) + "-" + Math.max(i - 20, 1));
+        else for (int i = 0; i < size; i += 20) items.add((i + 1) + "-" + Math.min(i + 20, size));
         mGroupAdapter.setItems(items, null);
     }
 
@@ -316,7 +322,7 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
     }
 
     private boolean shouldEnterFullscreen(Vod.Flag.Episode item) {
-        boolean enter = !mFullscreen && item.isActivated() && !Players.get().isIdle();
+        boolean enter = !mFullscreen && item.isActivated() && !mPlayers.isIdle();
         if (enter) enterFullscreen();
         return enter;
     }
@@ -327,9 +333,12 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
         mHandler.postDelayed(() -> getPlayerView().setUseController(true), 250);
         mBinding.flag.setSelectedPosition(mCurrent);
         mFullscreen = true;
+        onPlay(0);
     }
 
     private void exitFullscreen() {
+        mBinding.widget.top.setVisibility(View.GONE);
+        mBinding.widget.center.setVisibility(View.GONE);
         mBinding.video.setForeground(ResUtil.getDrawable(R.drawable.selector_video));
         mBinding.video.setLayoutParams(mFrameParams);
         getPlayerView().setUseController(false);
@@ -365,45 +374,43 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
 
     private void onScale() {
         int scale = getPlayerView().getResizeMode();
-        getPlayerView().setResizeMode(scale = scale >= 4 ? 0 : scale + 1);
+        getPlayerView().setResizeMode(scale = scale == 4 ? 0 : scale + 1);
         mControl.scale.setText(ResUtil.getStringArray(R.array.select_scale)[scale]);
         Prefers.putScale(scale);
     }
 
     public void onSpeed() {
-        Players.get().addSpeed();
-        mControl.speed.setText(Players.get().getSpeed());
+        mPlayers.addSpeed();
+        mControl.speed.setText(mPlayers.getSpeed());
     }
 
     public boolean onSpeedReset() {
-        Players.get().resetSpeed();
-        mControl.speed.setText(Players.get().getSpeed());
+        mPlayers.resetSpeed();
+        mControl.speed.setText(mPlayers.getSpeed());
         return true;
     }
 
     private void onOpening() {
         mHistory.setOpening(mHistory.getOpening() + Prefers.getInterval() * 1000L);
         if (mHistory.getOpening() > 5 * 60 * 1000) mHistory.setOpening(0);
-        mControl.opening.setText(Players.get().getStringForTime(mHistory.getOpening()));
+        mControl.opening.setText(mPlayers.getStringForTime(mHistory.getOpening()));
     }
 
     private boolean onOpeningReset() {
         mHistory.setOpening(0);
-        mControl.opening.setText(Players.get().getStringForTime(mHistory.getOpening()));
-        mHistory.update();
+        mControl.opening.setText(mPlayers.getStringForTime(mHistory.getOpening()));
         return true;
     }
 
     private void onEnding() {
         mHistory.setEnding(mHistory.getEnding() + Prefers.getInterval() * 1000L);
         if (mHistory.getEnding() > 5 * 60 * 1000) mHistory.setEnding(0);
-        mControl.ending.setText(Players.get().getStringForTime(mHistory.getEnding()));
+        mControl.ending.setText(mPlayers.getStringForTime(mHistory.getEnding()));
     }
 
     private boolean onEndingReset() {
         mHistory.setEnding(0);
-        mControl.ending.setText(Players.get().getStringForTime(mHistory.getEnding()));
-        mHistory.update();
+        mControl.ending.setText(mPlayers.getStringForTime(mHistory.getEnding()));
         return true;
     }
 
@@ -417,9 +424,14 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
     private void onReset() {
         mHistory.setEnding(0);
         mHistory.setOpening(0);
-        mControl.ending.setText(Players.get().getStringForTime(mHistory.getEnding()));
-        mControl.opening.setText(Players.get().getStringForTime(mHistory.getOpening()));
-        mHistory.update();
+        mControl.ending.setText(mPlayers.getStringForTime(mHistory.getEnding()));
+        mControl.opening.setText(mPlayers.getStringForTime(mHistory.getOpening()));
+    }
+
+    private void onTracks() {
+        mHandler.postDelayed(() -> getPlayerView().hideController(), 150);
+        TrackSelectionDialog.createForPlayer(mPlayers.exo(), dialog -> {
+        }).show(getSupportFragmentManager(), "tracks");
     }
 
     private void getPart(String source) {
@@ -436,6 +448,9 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
     private void checkHistory() {
         mHistory = History.find(getHistoryKey());
         if (mFlagAdapter.size() == 0) {
+            mBinding.flag.setVisibility(View.GONE);
+            mBinding.group.setVisibility(View.GONE);
+            mBinding.episode.setVisibility(View.GONE);
             Notify.show(R.string.error_episode);
             return;
         }
@@ -443,14 +458,14 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
             setFlagActivated(mHistory.getFlag());
             setEpisodeActivated(mHistory.getEpisode());
             if (mHistory.isRevSort()) reverseEpisode();
-            mControl.opening.setText(Players.get().getStringForTime(mHistory.getOpening()));
-            mControl.ending.setText(Players.get().getStringForTime(mHistory.getEnding()));
+            mControl.opening.setText(mPlayers.getStringForTime(mHistory.getOpening()));
+            mControl.ending.setText(mPlayers.getStringForTime(mHistory.getEnding()));
         } else {
             mHistory = createHistory();
             setFlagActivated((Vod.Flag) mFlagAdapter.get(0));
             setEpisodeActivated((Vod.Flag.Episode) mEpisodeAdapter.get(0));
-            mControl.opening.setText(Players.get().getStringForTime(0));
-            mControl.ending.setText(Players.get().getStringForTime(0));
+            mControl.opening.setText(mPlayers.getStringForTime(0));
+            mControl.ending.setText(mPlayers.getStringForTime(0));
         }
     }
 
@@ -460,13 +475,13 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
         history.setCid(ApiConfig.getCid());
         history.setVodPic(mBinding.video.getTag().toString());
         history.setVodName(mBinding.name.getText().toString());
-        return history.save();
+        return history;
     }
 
     private void updateHistory(Vod.Flag.Episode item, boolean replay) {
         replay = replay || !item.equals(mHistory.getEpisode());
-        long duration = replay ? 0 : mHistory.getDuration();
-        mHistory.setDuration(duration);
+        long position = replay ? 0 : mHistory.getPosition();
+        mHistory.setPosition(position);
         mHistory.setEpisodeUrl(item.getUrl());
         mHistory.setVodRemarks(item.getName());
         mHistory.setVodFlag(getVodFlag().getFlag());
@@ -474,33 +489,30 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
     }
 
     private void updateHistory() {
-        if (mHistory == null) return;
-        mHistory.setDuration(Players.get().getCurrentPosition());
-        mHistory.update();
+        if (mHistory == null || mPlayers.getCurrentPosition() <= 0) return;
+        mHistory.update(mPlayers.getCurrentPosition(), mPlayers.getDuration());
+        RefreshEvent.history();
     }
 
     private final Runnable mHideCenter = new Runnable() {
         @Override
         public void run() {
-            mBinding.center.action.setImageResource(R.drawable.ic_play);
-            mBinding.center.getRoot().setVisibility(View.GONE);
+            mBinding.widget.action.setImageResource(R.drawable.ic_play);
+            mBinding.widget.center.setVisibility(View.GONE);
+            mBinding.widget.top.setVisibility(View.GONE);
         }
     };
 
-    private final Runnable mProgress = new Runnable() {
-        @Override
-        public void run() {
-            boolean keep = true;
-            long duration = Players.get().getDuration();
-            long current = Players.get().getCurrentPosition();
-            if (mHistory.getOpening() >= current) Players.get().seekTo(mHistory.getOpening());
-            if (mHistory.getEnding() > 0 && duration > 0 && mHistory.getEnding() + current >= duration) {
-                keep = false;
-                checkNext();
-            }
-            if (keep) mHandler.postDelayed(mProgress, 1000);
+    @Override
+    public void onTimeChanged() {
+        long duration = mPlayers.getDuration();
+        long current = mPlayers.getCurrentPosition();
+        if (mHistory.getOpening() >= current) mPlayers.seekTo(mHistory.getOpening());
+        if (mHistory.getEnding() > 0 && duration > 0 && mHistory.getEnding() + current >= duration) {
+            Clock.get().setCallback(null);
+            checkNext();
         }
-    };
+    }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onPlayerEvent(PlayerEvent event) {
@@ -511,47 +523,52 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
             case Player.STATE_IDLE:
                 break;
             case Player.STATE_BUFFERING:
-                mBinding.progress.getRoot().setVisibility(View.VISIBLE);
+                mBinding.widget.progress.getRoot().setVisibility(View.VISIBLE);
                 break;
             case Player.STATE_READY:
-                Players.get().setRetry(0);
-                mBinding.progress.getRoot().setVisibility(View.GONE);
+                mPlayers.setRetry(0);
+                mBinding.widget.progress.getRoot().setVisibility(View.GONE);
+                TrackSelectionDialog.setVisible(mPlayers.exo(), mControl.tracks);
                 break;
             case Player.STATE_ENDED:
-                if (Players.get().canNext()) checkNext();
+                if (mPlayers.canNext()) checkNext();
                 break;
             default:
-                if (!event.isRetry() || Players.get().addRetry() > 3) onError(event.getMsg());
+                if (!event.isRetry() || mPlayers.addRetry() > 3) onError(event.getMsg());
                 else onRetry();
                 break;
         }
     }
 
     private void checkPosition() {
-        Players.get().seekTo(mHistory.getDuration());
-        stopTimer();
-        setTimer();
-    }
-
-    private void stopTimer() {
-        mHandler.removeCallbacks(mProgress);
-    }
-
-    private void setTimer() {
-        mHandler.postDelayed(mProgress, 1000);
+        mPlayers.seekTo(mHistory.getPosition());
+        Clock.get().setCallback(this);
     }
 
     private void onRetry() {
-        updateHistory();
+        mHistory.setPosition(mPlayers.getCurrentPosition());
         getPlayer(false);
     }
 
     private void onError(String msg) {
-        mBinding.progress.getRoot().setVisibility(View.GONE);
-        mBinding.error.getRoot().setVisibility(View.VISIBLE);
-        mBinding.error.text.setText(msg);
-        Players.get().stop();
-        stopTimer();
+        mBinding.widget.progress.getRoot().setVisibility(View.GONE);
+        mBinding.widget.error.setVisibility(View.VISIBLE);
+        mBinding.widget.text.setText(msg);
+        Clock.get().setCallback(null);
+        mPlayers.stop();
+    }
+
+    private void onPause(boolean visible) {
+        mBinding.widget.exoPosition.setText(mPlayers.getTime(0));
+        mBinding.widget.exoDuration.setText(mControl.exoDuration.getText());
+        mBinding.widget.top.setVisibility(visible ? View.VISIBLE : View.GONE);
+        mBinding.widget.center.setVisibility(visible ? View.VISIBLE : View.GONE);
+        mPlayers.pause();
+    }
+
+    private void onPlay(int delay) {
+        mHandler.postDelayed(mHideCenter, delay);
+        mPlayers.play();
     }
 
     @Override
@@ -562,18 +579,17 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
 
     @Override
     public void onSeeking(int time) {
-        mBinding.center.exoDuration.setText(mControl.exoDuration.getText());
-        mBinding.center.exoPosition.setText(Players.get().getTime(time));
-        mBinding.center.action.setImageResource(time > 0 ? R.drawable.ic_forward : R.drawable.ic_rewind);
-        mBinding.center.getRoot().setVisibility(View.VISIBLE);
+        mBinding.widget.exoDuration.setText(mControl.exoDuration.getText());
+        mBinding.widget.exoPosition.setText(mPlayers.getTime(time));
+        mBinding.widget.action.setImageResource(time > 0 ? R.drawable.ic_forward : R.drawable.ic_rewind);
+        mBinding.widget.center.setVisibility(View.VISIBLE);
     }
 
     @Override
     public void onSeekTo(int time) {
-        mHandler.postDelayed(mHideCenter, 500);
-        Players.get().seekTo(time);
-        Players.get().play();
+        mPlayers.seekTo(time);
         mKeyDown.resetTime();
+        onPlay(500);
     }
 
     @Override
@@ -584,27 +600,23 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
 
     @Override
     public void onKeyCenter() {
-        if (Players.get().isPlaying()) {
-            Players.get().pause();
-            mBinding.center.getRoot().setVisibility(View.VISIBLE);
-            mBinding.center.exoPosition.setText(Players.get().getTime(0));
-            mBinding.center.exoDuration.setText(mControl.exoDuration.getText());
-        } else {
-            Players.get().play();
-            mBinding.center.getRoot().setVisibility(View.GONE);
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        Players.get().pause();
+        if (mPlayers.isPlaying()) onPause(true);
+        else onPlay(0);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        Players.get().play();
+        Clock.start(mBinding.widget.time);
+        onPlay(0);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Clock.get().release();
+        updateHistory();
+        onPause(false);
     }
 
     @Override
@@ -621,10 +633,7 @@ public class DetailActivity extends BaseActivity implements CustomKeyDown.Listen
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopTimer();
-        updateHistory();
-        Players.get().stop();
-        RefreshEvent.history();
+        mPlayers.release();
         EventBus.getDefault().unregister(this);
     }
 }

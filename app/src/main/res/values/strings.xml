@@ -10,7 +10,11 @@
     <!-- Vod -->
     <string name="vod_last">Last seen <xliff:g name="name">%s</xliff:g></string>
 
+    <!-- Push -->
+    <string name="push_clip">Push clipboard content</string>
+
     <!-- Detail -->
+    <string name="detail_title"><xliff:g name="name">%s</xliff:g> : <xliff:g name="name">%s</xliff:g></string>
     <string name="detail_site">Site: <xliff:g name="name">%s</xliff:g></string>
     <string name="detail_year">Year: <xliff:g name="name">%s</xliff:g></string>
     <string name="detail_area">Area: <xliff:g name="name">%s</xliff:g></string>
@@ -26,6 +30,7 @@
     <string name="play_ready">Ready to play: <xliff:g name="name">%s</xliff:g></string>
     <string name="play_replay">Replay</string>
     <string name="play_reset">Reset</string>
+    <string name="play_tracks">Tracks</string>
     <string name="play_oped">OP&amp;ED</string>
     <string name="play_reverse">Reverse</string>
     <string name="play_forward">→</string>
@@ -40,8 +45,11 @@
     <!-- Setting -->
     <string name="setting_site">Home site</string>
     <string name="setting_url">Configuration</string>
-    <string name="setting_render">Render</string>
-    <string name="setting_thumbnail">Thumbnail</string>
+    <string name="setting_render">Render type</string>
+    <string name="setting_scale">Scale type</string>
+    <string name="setting_quality">Image quality</string>
+    <string name="setting_size">Image size</string>
+    <string name="setting_version">Version</string>
 
     <!-- Dialog -->
     <string name="dialog_positive">OK</string>
@@ -59,6 +67,10 @@
     <string name="error_episode">No episode data</string>
     <string name="error_empty">Not found</string>
 
+    <!-- Update -->
+    <string name="update_version">New version <xliff:g name="name">%s</xliff:g></string>
+    <string name="update_confirm">Update</string>
+
     <!-- Crash -->
     <string name="crash_info">An unexpected error occurred.\nSorry for the inconvenience.</string>
     <string name="crash_restart">Restart app</string>
@@ -67,6 +79,7 @@
     <string name="crash_details_close">Close</string>
 
     <!-- UNIT -->
+    <string name="all">All</string>
     <string name="second"><xliff:g name="name">%s</xliff:g> s</string>
 
     <string-array name="select_render">
@@ -74,16 +87,22 @@
         <item>Texture</item>
     </string-array>
 
-    <string-array name="select_thumbnail">
+    <string-array name="select_quality">
         <item>Low</item>
         <item>Medium</item>
         <item>High</item>
     </string-array>
 
+    <string-array name="select_size">
+        <item>Small</item>
+        <item>Medium</item>
+        <item>Large</item>
+    </string-array>
+
     <string-array name="select_scale">
         <item>Default</item>
-        <item>Width</item>
-        <item>Height</item>
+        <item>16:9</item>
+        <item>4:3</item>
         <item>Fill</item>
         <item>Zoom</item>
     </string-array>

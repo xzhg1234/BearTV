@@ -72,6 +72,9 @@ public class Vod {
     @SerializedName("vod_play_url")
     private String vodPlayUrl;
 
+    @SerializedName("vod_tag")
+    private String vodTag;
+
     @Path("dl")
     @ElementList(entry = "dd", required = false, inline = true)
     private List<Flag> vodFlags;
@@ -132,6 +135,10 @@ public class Vod {
         return TextUtils.isEmpty(vodPlayUrl) ? "" : vodPlayUrl;
     }
 
+    public String getVodTag() {
+        return TextUtils.isEmpty(vodTag) ? "" : vodTag;
+    }
+
     public List<Flag> getVodFlags() {
         return vodFlags = vodFlags == null ? new ArrayList<>() : vodFlags;
     }
@@ -158,6 +165,10 @@ public class Vod {
 
     public int getRemarkVisible() {
         return getVodRemarks().isEmpty() ? View.GONE : View.VISIBLE;
+    }
+
+    public boolean shouldSearch() {
+        return getVodId().isEmpty() || getVodId().startsWith("msearch:");
     }
 
     public void setVodFlags() {
@@ -216,9 +227,10 @@ public class Vod {
 
         public void createEpisode(String data) {
             String[] urls = data.contains("#") ? data.split("#") : new String[]{data};
+            String play = ResUtil.getString(R.string.play);
             for (String url : urls) {
                 String[] split = url.split("\\$");
-                Episode episode = split.length >= 2 ? new Vod.Flag.Episode(split[0], split[1]) : new Vod.Flag.Episode(ResUtil.getString(R.string.play), url);
+                Episode episode = split.length >= 2 ? new Vod.Flag.Episode(split[0].isEmpty() ? play : split[0], split[1]) : new Vod.Flag.Episode(play, url);
                 if (!getEpisodes().contains(episode)) getEpisodes().add(episode);
             }
         }

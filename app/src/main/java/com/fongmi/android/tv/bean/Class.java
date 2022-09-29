@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.bean;
 
+import android.text.TextUtils;
+
 import com.fongmi.android.tv.R;
 import com.google.gson.annotations.SerializedName;
 
@@ -18,7 +20,11 @@ public class Class {
     @SerializedName("type_name")
     private String typeName;
 
+    @SerializedName("type_flag")
+    private String typeFlag;
+
     private Boolean filter;
+    private boolean activated;
 
     public String getTypeId() {
         return typeId;
@@ -26,6 +32,10 @@ public class Class {
 
     public String getTypeName() {
         return typeName;
+    }
+
+    public String getTypeFlag() {
+        return TextUtils.isEmpty(typeFlag) ? "" : typeFlag;
     }
 
     public void setFilter(Boolean filter) {
@@ -36,9 +46,17 @@ public class Class {
         return filter;
     }
 
-    public Class toggleFilter() {
+    public boolean isActivated() {
+        return activated;
+    }
+
+    public void setActivated(boolean activated) {
+        this.activated = activated;
+    }
+
+    public boolean toggleFilter() {
         setFilter(!getFilter());
-        return this;
+        return getFilter();
     }
 
     public int getIcon() {

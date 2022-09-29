@@ -1,11 +1,11 @@
 package com.fongmi.android.tv.api;
 
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Site;
@@ -18,6 +18,7 @@ import com.github.catvod.crawler.Spider;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 
 import org.json.JSONObject;
@@ -89,11 +90,10 @@ public class ApiConfig {
 
     private void getFileConfig(String url, Callback callback) {
         try {
-            JsonReader reader = new JsonReader(new FileReader(FileUtil.getLocal(url)));
-            parseConfig(new Gson().fromJson(reader, JsonObject.class), callback);
+            parseConfig(new Gson().fromJson(new JsonReader(new FileReader(FileUtil.getLocal(url))), JsonObject.class), callback);
         } catch (Exception e) {
             e.printStackTrace();
-            handler.post(() -> callback.error(R.string.error_config_get));
+            getCacheConfig(url, callback);
         }
     }
 
@@ -102,16 +102,21 @@ public class ApiConfig {
             parseConfig(new Gson().fromJson(OKHttp.newCall(url).execute().body().string(), JsonObject.class), callback);
         } catch (Exception e) {
             e.printStackTrace();
-            handler.post(() -> callback.error(R.string.error_config_get));
+            getCacheConfig(url, callback);
         }
+    }
+
+    private void getCacheConfig(String url, Callback callback) {
+        String json = Config.find(url).getJson();
+        if (!TextUtils.isEmpty(json)) parseConfig(JsonParser.parseString(json).getAsJsonObject(), callback);
+        else handler.post(() -> callback.error(R.string.error_config_get));
     }
 
     private void parseConfig(JsonObject object, Callback callback) {
         try {
-            String spider = Json.safeString(object, "spider", "");
             parseJson(object);
-            parseJar(spider);
-            handler.post(callback::success);
+            loader.parseJar("", Json.safeString(object, "spider", ""));
+            handler.post(() -> callback.success(object.toString()));
         } catch (Exception e) {
             e.printStackTrace();
             handler.post(() -> callback.error(R.string.error_config_parse));
@@ -119,58 +124,32 @@ public class ApiConfig {
     }
 
     private void parseJson(JsonObject object) {
-        for (JsonElement element : object.get("sites").getAsJsonArray()) {
+        for (JsonElement element : Json.safeListElement(object, "sites")) {
             Site site = Site.objectFrom(element).sync();
             site.setExt(parseExt(site.getExt()));
             if (site.getKey().equals(Prefers.getHome())) setHome(site);
             if (!sites.contains(site)) sites.add(site);
         }
-        for (JsonElement element : object.get("parses").getAsJsonArray()) {
+        for (JsonElement element : Json.safeListElement(object, "parses")) {
             Parse parse = Parse.objectFrom(element);
             if (parse.getName().equals(Prefers.getParse())) setParse(parse);
             if (!parses.contains(parse)) parses.add(parse);
         }
         if (home == null) setHome(sites.isEmpty() ? new Site() : sites.get(0));
         if (parse == null) setParse(parses.isEmpty() ? new Parse() : parses.get(0));
-        flags.addAll(Json.safeList(object, "flags"));
-        ads.addAll(Json.safeList(object, "ads"));
+        flags.addAll(Json.safeListString(object, "flags"));
+        ads.addAll(Json.safeListString(object, "ads"));
     }
 
     private String parseExt(String ext) {
         if (ext.startsWith("http")) return ext;
         else if (ext.startsWith("file")) return FileUtil.read(ext);
-        else if (ext.endsWith(".json")) return parseExt(convert(ext));
+        else if (ext.endsWith(".json")) return parseExt(FileUtil.convert(ext));
         return ext;
     }
 
-    private void parseJar(String spider) throws Exception {
-        String[] texts = spider.split(";md5;");
-        String md5 = spider.startsWith("http") && texts.length > 1 ? texts[1].trim() : "";
-        String url = texts[0];
-        if (md5.length() > 0 && FileUtil.equals(md5)) {
-            loader.load(FileUtil.getJar());
-        } else if (url.startsWith("http")) {
-            FileUtil.write(FileUtil.getJar(), OKHttp.newCall(url).execute().body().bytes());
-            loader.load(FileUtil.getJar());
-        } else if (url.startsWith("file")) {
-            loader.load(FileUtil.getLocal(url));
-        } else if (!url.isEmpty()) {
-            parseJar(convert(url));
-        }
-    }
-
-    private String convert(String text) {
-        if (TextUtils.isEmpty(text)) return "";
-        if (text.startsWith("clan")) return text.replace("clan", "file");
-        if (text.startsWith(".")) text = text.substring(1);
-        if (text.startsWith("/")) text = text.substring(1);
-        Uri uri = Uri.parse(Prefers.getUrl());
-        if (uri.getLastPathSegment() == null) return uri.getScheme() + "://" + text;
-        return uri.toString().replace(uri.getLastPathSegment(), text);
-    }
-
     public Spider getCSP(Site site) {
-        return loader.getSpider(site.getKey(), site.getApi(), site.getExt());
+        return loader.getSpider(site.getKey(), site.getApi(), site.getExt(), site.getJar());
     }
 
     public Object[] proxyLocal(Map<?, ?> param) {
