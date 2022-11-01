@@ -187,6 +187,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             case R.string.home_vod:
                 VodActivity.start(this, mViewModel.getResult().getValue());
                 break;
+            case R.string.home_live:
+                LiveActivity.start(this);
+                break;
             case R.string.home_search:
                 SearchActivity.start(this);
                 break;
@@ -236,7 +239,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     public void showDialog() {
-        SiteDialog.show(this);
+        SiteDialog.create(this).show();
     }
 
     @Override
@@ -269,11 +272,11 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     public void onServerEvent(ServerEvent event) {
         switch (event.getType()) {
             case SEARCH:
-                CollectActivity.start(this, event.getText());
+                CollectActivity.start(this, event.getText(), true);
                 break;
             case PUSH:
                 if (ApiConfig.get().getSite("push_agent") == null) return;
-                DetailActivity.start(this, "push_agent", event.getText());
+                DetailActivity.start(this, "push_agent", event.getText(), true);
                 break;
         }
     }

@@ -48,10 +48,14 @@ public class CollectActivity extends BaseActivity {
     }
 
     public static void start(Activity activity, String keyword) {
+        start(activity, keyword, false);
+    }
+
+    public static void start(Activity activity, String keyword, boolean clear) {
         Intent intent = new Intent(activity, CollectActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        if (clear) intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra("keyword", keyword);
-        activity.startActivity(intent);
+        activity.startActivityForResult(intent, 1000);
     }
 
     @Override
@@ -81,10 +85,7 @@ public class CollectActivity extends BaseActivity {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
                 mBinding.pager.setCurrentItem(position);
-                if (mOldView != null) mOldView.setActivated(false);
-                if (child == null) return;
-                mOldView = child.itemView;
-                mOldView.setActivated(true);
+                onChildSelected(child);
             }
         });
     }
@@ -124,8 +125,23 @@ public class CollectActivity extends BaseActivity {
         for (Site site : mSites) mExecutor.execute(() -> mViewModel.searchContent(site, getKeyword()));
     }
 
+    private void onChildSelected(@Nullable RecyclerView.ViewHolder child) {
+        if (mOldView != null) mOldView.setActivated(false);
+        if (child == null) return;
+        mOldView = child.itemView;
+        mOldView.setActivated(true);
+    }
+
     private CollectFragment getFragment() {
         return (CollectFragment) mPageAdapter.instantiateItem(mBinding.pager, 0);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK) return;
+        setResult(RESULT_OK);
+        finish();
     }
 
     @Override

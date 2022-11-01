@@ -5,6 +5,7 @@ import android.content.Context;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.net.OKHttp;
 import com.fongmi.android.tv.utils.FileUtil;
+import com.fongmi.android.tv.utils.Utils;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderNull;
 
@@ -64,25 +65,27 @@ public class JarLoader {
 
     public void parseJar(String key, String jar) {
         String[] texts = jar.split(";md5;");
-        String md5 = jar.startsWith("http") && texts.length > 1 ? texts[1].trim() : "";
+        String md5 = !jar.startsWith("file") && texts.length > 1 ? texts[1].trim() : "";
         jar = texts[0];
-        if (md5.length() > 0 && FileUtil.equals(jar, md5)) {
+        if (jar.startsWith("img+")) {
+            load(key, Decoder.getSpider(jar, md5));
+        } else if (md5.length() > 0 && FileUtil.equals(jar, md5)) {
             load(key, FileUtil.getJar(jar));
         } else if (jar.startsWith("http")) {
             load(key, download(jar));
         } else if (jar.startsWith("file")) {
             load(key, FileUtil.getLocal(jar));
         } else if (!jar.isEmpty()) {
-            parseJar(key, FileUtil.convert(jar));
+            parseJar(key, Utils.convert(jar));
         }
     }
 
     public Spider getSpider(String key, String api, String ext, String jar) {
         try {
-            String spKey = (current = FileUtil.getMD5(jar)) + key;
+            String spKey = (current = Utils.getMD5(jar)) + key;
             if (spiders.containsKey(spKey)) return spiders.get(spKey);
             if (!loaders.containsKey(current)) parseJar(current, jar);
-            Spider spider = (Spider) loaders.get(current).loadClass("com.github.catvod.spider." + api.replace("csp_", "")).newInstance();
+            Spider spider = (Spider) loaders.get(current).loadClass("com.github.catvod.spider." + api.split("csp_")[1]).newInstance();
             spider.init(App.get(), ext);
             spiders.put(spKey, spider);
             return spider;

@@ -161,7 +161,7 @@ public class Vod {
     }
 
     public int getYearVisible() {
-        return getSite() != null || getVodYear().isEmpty() ? View.GONE : View.VISIBLE;
+        return getSite() != null || getVodYear().length() < 4 ? View.GONE : View.VISIBLE;
     }
 
     public int getRemarkVisible() {
@@ -201,6 +201,10 @@ public class Vod {
 
         private boolean activated;
 
+        public Flag() {
+            this.episodes = new ArrayList<>();
+        }
+
         public Flag(String flag) {
             this.episodes = new ArrayList<>();
             this.flag = flag;
@@ -222,8 +226,9 @@ public class Vod {
             return activated;
         }
 
-        public void setActivated(boolean activated) {
-            this.activated = activated;
+        public void setActivated(Flag item) {
+            this.activated = item.equals(this);
+            if (activated) item.episodes = episodes;
         }
 
         public void createEpisode(String data) {
