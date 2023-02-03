@@ -16,7 +16,6 @@ import com.fongmi.android.tv.ui.adapter.KeepAdapter;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.utils.Prefers;
 
-import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
@@ -52,22 +51,6 @@ public class KeepActivity extends BaseActivity implements KeepAdapter.OnClickLis
         mAdapter.addAll(Keep.getVod());
     }
 
-    private void loadConfig(Config config, Keep item) {
-        ApiConfig.get().clear().config(config).load(true, new Callback() {
-            @Override
-            public void success() {
-                DetailActivity.start(getActivity(), item.getSiteKey(), item.getVodId());
-                RefreshEvent.history();
-                RefreshEvent.video();
-            }
-
-            @Override
-            public void error(int resId) {
-                CollectActivity.start(getActivity(), item.getVodName());
-            }
-        });
-    }
-
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onRefreshEvent(RefreshEvent event) {
         if (event.getType() == RefreshEvent.Type.KEEP) getKeep();
@@ -77,12 +60,26 @@ public class KeepActivity extends BaseActivity implements KeepAdapter.OnClickLis
     public void onItemClick(Keep item) {
         Config config = Config.find(item.getCid());
         if (item.getCid() == ApiConfig.getCid()) {
-            DetailActivity.start(this, item.getSiteKey(), item.getVodId());
-        } else if (config == null) {
-            CollectActivity.start(this, item.getVodName());
+            DetailActivity.start(this, item.getSiteKey(), item.getVodId(), item.getVodName());
         } else {
             loadConfig(config, item);
         }
+    }
+
+    private void loadConfig(Config config, Keep item) {
+        ApiConfig.get().clear().config(config).load(true, new Callback() {
+            @Override
+            public void success() {
+                DetailActivity.start(getActivity(), item.getSiteKey(), item.getVodId(), item.getVodName());
+                RefreshEvent.history();
+                RefreshEvent.video();
+            }
+
+            @Override
+            public void error(int resId) {
+                CollectActivity.start(getActivity(), item.getVodName());
+            }
+        });
     }
 
     @Override
@@ -101,11 +98,5 @@ public class KeepActivity extends BaseActivity implements KeepAdapter.OnClickLis
     public void onBackPressed() {
         if (mAdapter.isDelete()) mAdapter.setDelete(false);
         else super.onBackPressed();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        EventBus.getDefault().unregister(this);
     }
 }

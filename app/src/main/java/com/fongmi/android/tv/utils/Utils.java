@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.utils;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
@@ -11,13 +12,17 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 
+import androidx.fragment.app.FragmentActivity;
+
 import com.fongmi.android.tv.App;
-import com.fongmi.android.tv.api.ApiConfig;
+import com.fongmi.android.tv.server.Server;
 import com.google.android.exoplayer2.util.Util;
+import com.permissionx.guolindev.PermissionX;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -68,8 +73,8 @@ public class Utils {
 
     public static boolean isVideoFormat(String url, Map<String, String> headers) {
         if (Sniffer.CUSTOM.matcher(url).find()) return true;
-        if (headers.containsKey("Accept") && headers.get("Accept").contains("image")) return false;
-        if (url.contains(".js") || url.contains(".css")) return false;
+        if (headers.containsKey("Accept") && headers.get("Accept").startsWith("image")) return false;
+        if (url.contains("url=http") || url.contains(".js") || url.contains(".css") || url.contains(".html")) return false;
         return Sniffer.RULE.matcher(url).find();
     }
 
@@ -79,6 +84,11 @@ public class Utils {
         return false;
     }
 
+    public static String checkProxy(String url) {
+        if (url.startsWith("proxy://")) return url.replace("proxy://", Server.get().getAddress(true) + "/proxy?");
+        return url;
+    }
+
     public static String checkClan(String text) {
         if (text.contains("/localhost/")) text = text.replace("/localhost/", "/");
         if (text.startsWith("clan")) text = text.replace("clan", "file");
@@ -86,16 +96,21 @@ public class Utils {
     }
 
     public static String convert(String text) {
+        return text.startsWith("file") ? Server.get().getAddress(true) + "/" + text : text;
+    }
+
+    public static String convert(String baseUrl, String text) {
         if (TextUtils.isEmpty(text)) return "";
         if (text.startsWith("clan")) return checkClan(text);
         if (text.startsWith(".")) text = text.substring(1);
         if (text.startsWith("/")) text = text.substring(1);
-        Uri uri = Uri.parse(ApiConfig.getUrl());
-        if (uri.getLastPathSegment() == null) return uri.getScheme() + "://" + text;
-        return uri.toString().replace(uri.getLastPathSegment(), text);
+        String last = Uri.parse(baseUrl).getLastPathSegment();
+        if (last == null) return Uri.parse(baseUrl).getScheme() + "://" + text;
+        int index = baseUrl.lastIndexOf(last);
+        return baseUrl.substring(0, index) + text;
     }
 
-    public static String getMD5(String src) {
+    public static String getMd5(String src) {
         try {
             if (TextUtils.isEmpty(src)) return "";
             MessageDigest digest = MessageDigest.getInstance("MD5");
@@ -130,6 +145,14 @@ public class Utils {
         return text;
     }
 
+    public static long format(SimpleDateFormat format, String src) {
+        try {
+            return format.parse(src).getTime();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public static int getDigit(String text) {
         try {
             if (text.startsWith("上") || text.startsWith("下")) return -1;
@@ -146,5 +169,9 @@ public class Utils {
         if (imm != null && windowToken != null) {
             imm.hideSoftInputFromWindow(windowToken, 0);
         }
+    }
+
+    public static boolean hasPermission(FragmentActivity activity) {
+        return PermissionX.isGranted(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
     }
 }

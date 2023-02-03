@@ -1,55 +1,32 @@
-# TV
+# 影視
 
-### Based on CatVod  
+### 基於 CatVod 項目
+
 https://github.com/CatVodTVOfficial/CatVodTVJarLoader
 
-### Download
-[TV](https://github.com/FongMi/TV/blob/main/release/leanback.apk?raw=true "leanback.apk")  
-[Mobile](https://github.com/FongMi/TV/ "mobile.apk")  ...incoming
+### 下載
 
-### How to build
-Use dev branch
+[Jar+Js](https://github.com/FongMi/TV/blob/main/release/leanback-java.apk?raw=true "TV")  
+[Jar+Js+Py](https://github.com/FongMi/TV/blob/main/release/leanback-python.apk?raw=true "TV")
 
-### Local Config Example
-    file://cat.json
+### 點播欄位
 
-```json
-{
-   "spider":"spider.jar",
-   "sites":[
-      {
-         "key":"one",
-         "name":"One",
-         "type":3,
-         "api":"csp_Csp",
-         "searchable":1,
-         "quickSearch":1,
-         "filterable":1,
-         "ext":"file://one.json"
-      },
-      {
-         "key":"two",
-         "name":"Two",
-         "type":3,
-         "api":"csp_XPath",
-         "searchable":1,
-         "quickSearch":1,
-         "filterable":1,
-         "ext":"two.json"
-      }
-   ]
-}
-```
-### Subtitle Format
-In playerContent put "sub"
+<pre><code>searchable：搜索    (0：關閉、1：啟用)  
+filterable：篩選    (0：關閉、1：啟用)  
+switchable：換源    (0：關閉、1：啟用)
+playerType：播放器  (1：IJK、2：EXO)</code></pre>
 
-#### Single
-    title#MIME#url
-#### Multiple
-    title#MIME#url$$$title#MIME#url
-#### MIME Type
-    .srt = application/x-subrip
-    .vtt = text/vtt
-    .ass = text/x-ssa
-#### Example
-    Avatar#application/x-subrip#https://github.com/FongMi/TV/subtitle.srt
+### 直播欄位
+
+<pre><code>ua：用戶代理
+epg：節目網址
+logo：台標網址
+boot：是否自動開啟
+playerType：播放器</code></pre>
+
+### 配置範例
+
+[點播-線上](other/sample/vod/online.json)  
+[點播-本地](other/sample/vod/offline.json)  
+[直播-線上](other/sample/live/online.json)  
+[直播-本地](other/sample/live/offline.json)

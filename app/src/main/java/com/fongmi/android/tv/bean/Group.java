@@ -1,16 +1,20 @@
 package com.fongmi.android.tv.bean;
 
 import android.text.TextUtils;
-import android.view.View;
 import android.widget.ImageView;
 
-import com.bumptech.glide.Glide;
-import com.fongmi.android.tv.App;
-import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.utils.ResUtil;
-import com.google.gson.annotations.SerializedName;
+import androidx.annotation.StringRes;
 
+import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.utils.ImgUtil;
+import com.fongmi.android.tv.utils.ResUtil;
+import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Group {
@@ -26,8 +30,18 @@ public class Group {
 
     private int position;
 
+    public static List<Group> arrayFrom(String str) {
+        Type listType = new TypeToken<List<Group>>() {}.getType();
+        List<Group> items = new Gson().fromJson(str, listType);
+        return items == null ? Collections.emptyList() : items;
+    }
+
     public static Group create(String name) {
         return new Group(name);
+    }
+
+    public static Group create(@StringRes int resId) {
+        return new Group(ResUtil.getString(resId));
     }
 
     public Group(String name) {
@@ -93,12 +107,8 @@ public class Group {
         return isKeep() || isSetting();
     }
 
-    public int getVisible() {
-        return getLogo().isEmpty() ? View.GONE : View.VISIBLE;
-    }
-
     public void loadLogo(ImageView view) {
-        if (!getLogo().isEmpty()) Glide.with(App.get()).load(getLogo()).into(view);
+        ImgUtil.loadLive(getLogo(), view);
     }
 
     public int find(int number) {

@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewpager.widget.ViewPager;
 
+import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.bean.Collect;
@@ -43,10 +44,6 @@ public class CollectActivity extends BaseActivity {
     private List<Site> mSites;
     private View mOldView;
 
-    private String getKeyword() {
-        return getIntent().getStringExtra("keyword");
-    }
-
     public static void start(Activity activity, String keyword) {
         start(activity, keyword, false);
     }
@@ -58,6 +55,10 @@ public class CollectActivity extends BaseActivity {
         activity.startActivityForResult(intent, 1000);
     }
 
+    private String getKeyword() {
+        return getIntent().getStringExtra("keyword");
+    }
+
     @Override
     protected ViewBinding getBinding() {
         return mBinding = ActivityCollectBinding.inflate(getLayoutInflater());
@@ -65,7 +66,6 @@ public class CollectActivity extends BaseActivity {
 
     @Override
     protected void initView() {
-        mExecutor = Executors.newFixedThreadPool(5);
         setRecyclerView();
         setViewModel();
         setPager();
@@ -98,7 +98,7 @@ public class CollectActivity extends BaseActivity {
 
     private void setViewModel() {
         mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
-        mViewModel.result.observe(this, result -> {
+        mViewModel.search.observe(this, result -> {
             mAdapter.add(Collect.create(result.getList()));
             getFragment().addVideo(result.getList());
             mPageAdapter.notifyDataSetChanged();
@@ -121,8 +121,16 @@ public class CollectActivity extends BaseActivity {
     private void search() {
         mAdapter.add(Collect.all());
         mPageAdapter.notifyDataSetChanged();
+        mExecutor = Executors.newFixedThreadPool(Constant.THREAD_POOL);
         mBinding.result.setText(getString(R.string.collect_result, getKeyword()));
-        for (Site site : mSites) mExecutor.execute(() -> mViewModel.searchContent(site, getKeyword()));
+        for (Site site : mSites) mExecutor.execute(() -> search(site));
+    }
+
+    private void search(Site site) {
+        try {
+            mViewModel.searchContent(site, getKeyword());
+        } catch (Throwable ignored) {
+        }
     }
 
     private void onChildSelected(@Nullable RecyclerView.ViewHolder child) {

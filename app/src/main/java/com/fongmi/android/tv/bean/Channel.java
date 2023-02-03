@@ -5,9 +5,8 @@ import android.text.TextUtils;
 import android.view.View;
 import android.widget.ImageView;
 
-import com.bumptech.glide.Glide;
-import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -28,6 +27,8 @@ public class Channel {
     private String number;
     @SerializedName("logo")
     private String logo;
+    @SerializedName("epg")
+    private String epg;
     @SerializedName("name")
     private String name;
     @SerializedName("ua")
@@ -36,6 +37,7 @@ public class Channel {
     private boolean selected;
     private Group group;
     private String url;
+    private Epg data;
     private int line;
 
     public static Channel objectFrom(JsonElement element) {
@@ -85,6 +87,14 @@ public class Channel {
         this.logo = logo;
     }
 
+    public String getEpg() {
+        return TextUtils.isEmpty(epg) ? "" : epg;
+    }
+
+    public void setEpg(String epg) {
+        this.epg = epg;
+    }
+
     public String getName() {
         return TextUtils.isEmpty(name) ? "" : name;
     }
@@ -110,11 +120,19 @@ public class Channel {
     }
 
     public String getUrl() {
-        return url;
+        return TextUtils.isEmpty(url) ? "" : url;
     }
 
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public Epg getData() {
+        return data == null ? new Epg() : data;
+    }
+
+    public void setData(Epg data) {
+        this.data = data;
     }
 
     public int getLine() {
@@ -129,20 +147,16 @@ public class Channel {
         return selected;
     }
 
-    public void setSelected(boolean selected) {
-        this.selected = selected;
-    }
-
     public void setSelected(Channel item) {
         this.selected = item.equals(this);
     }
 
-    public int getVisible() {
-        return getLogo().isEmpty() ? View.GONE : View.VISIBLE;
+    public int getLineVisible() {
+        return isOnly() ? View.GONE : View.VISIBLE;
     }
 
     public void loadLogo(ImageView view) {
-        if (!getLogo().isEmpty()) Glide.with(App.get()).load(getLogo()).into(view);
+        ImgUtil.loadLive(getLogo(), view);
     }
 
     public void addUrls(String... urls) {
@@ -157,12 +171,18 @@ public class Channel {
         setLine(getLine() > 0 ? getLine() - 1 : getUrls().size() - 1);
     }
 
-    public boolean isLastLine() {
-        return getLine() == getUrls().size() - 1;
+    public String getCurrent() {
+        return getUrls().get(getLine());
+    }
+
+    public boolean isOnly() {
+        return getUrls().size() == 1;
     }
 
     public String getLineText() {
-        return ResUtil.getString(R.string.live_line, getLine() + 1, getUrls().size());
+        if (getUrls().size() <= 1) return "";
+        if (getCurrent().contains("$")) return getCurrent().split("\\$")[1];
+        return ResUtil.getString(R.string.live_line, getLine() + 1);
     }
 
     public Channel setNumber(int number) {
@@ -175,16 +195,26 @@ public class Channel {
         return this;
     }
 
-    public String getScheme() {
-        return Uri.parse(getUrls().get(getLine())).getScheme().toLowerCase();
+    public void live(Live live) {
+        if (live.getUa().length() > 0 && getUa().isEmpty()) setUa(live.getUa());
+        if (!getEpg().startsWith("http")) setEpg(live.getEpg().replace("{name}", getName()).replace("{epg}", getEpg()));
+        if (!getLogo().startsWith("http")) setLogo(live.getLogo().replace("{name}", getName()).replace("{logo}", getLogo()));
     }
 
-    public boolean isTVBus() {
-        return getScheme().equals("tvbus");
+    public String getScheme() {
+        return Uri.parse(getCurrent()).getScheme().toLowerCase();
     }
 
     public boolean isForce() {
         return getScheme().startsWith("p") || getScheme().equals("mitv");
+    }
+
+    public boolean isZLive() {
+        return getScheme().startsWith("zlive");
+    }
+
+    public boolean isTVBus() {
+        return getScheme().startsWith("tvbus");
     }
 
     public Map<String, String> getHeaders() {

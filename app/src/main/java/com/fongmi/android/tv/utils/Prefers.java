@@ -67,6 +67,38 @@ public class Prefers {
         put("wall", wall);
     }
 
+    public static int getReset() {
+        return getInt("reset", 0);
+    }
+
+    public static void putReset(int reset) {
+        put("reset", reset);
+    }
+
+    public static int getPlayer() {
+        return getInt("player", 0);
+    }
+
+    public static void putPlayer(int player) {
+        put("player", player);
+    }
+
+    public static int getLivePlayer() {
+        return getInt("player_live", getPlayer());
+    }
+
+    public static void putLivePlayer(int player) {
+        put("player_live", player);
+    }
+
+    public static int getDecode() {
+        return getInt("decode", 1);
+    }
+
+    public static void putDecode(int decode) {
+        put("decode", decode);
+    }
+
     public static int getRender() {
         return getInt("render", 0);
     }
@@ -91,14 +123,6 @@ public class Prefers {
         put("size", size);
     }
 
-    public static String getParse() {
-        return getString("parse");
-    }
-
-    public static void putParse(String parse) {
-        put("parse", parse);
-    }
-
     public static String getKeyword() {
         return getString("keyword");
     }
@@ -113,6 +137,30 @@ public class Prefers {
 
     public static void putScale(int scale) {
         put("scale", scale);
+    }
+
+    public static int getLiveScale() {
+        return getInt("scale_live", getScale());
+    }
+
+    public static void putLiveScale(int scale) {
+        put("scale_live", scale);
+    }
+
+    public static boolean isInvert() {
+        return getBoolean("invert");
+    }
+
+    public static void putInvert(boolean invert) {
+        put("invert", invert);
+    }
+
+    public static boolean isAcross() {
+        return getBoolean("across", true);
+    }
+
+    public static void putAcross(boolean across) {
+        put("across", across);
     }
 
     public static boolean getUpdate() {
